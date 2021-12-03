@@ -11,7 +11,7 @@ type TTestData struct {
 }
 
 func TestTZeligIni(t *testing.T) {
-	zini, err := NewZeligFromFile("config.cfg") //如果没有这个文件不存在的 或者错误的 默认会生成一个 [general]的段
+	zini, err := NewZeligIniFromFile("config.cfg") //如果没有这个文件不存在的 或者错误的 默认会生成一个 [general]的段
 	t.Error(err)
 	sec := zini.Section(`general`)
 	sec.SetString("test", "heihei") // 如果没有 新增一个  如果有 修改
