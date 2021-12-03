@@ -5,13 +5,13 @@
 #### Web http://zelig.cn
 ```golang
 
-  type TTestData struct {
-    StringVal string  `ini:"string_value"`
-    IntVal    int64   `ini:"integer_value"`
-    FloatVal  float64 `ini:"Float_value"`
-  }
+	type TTestData struct {
+		StringVal string  `ini:"string_value"`
+		IntVal    int64   `ini:"integer_value"`
+		FloatVal  float64 `ini:"Float_value"`
+	}
 
-	zini, err := NewZeligFromFile("config.cfg") //如果没有这个文件不存在的 或者错误的 默认会生成一个 [general]的段
+	zini, err := NewZeligIniFromFile("config.cfg") //如果没有这个文件不存在的 或者错误的 默认会生成一个 [general]的段
 	t.Error(err)
 	sec := zini.Section(`general`)
 	sec.SetString("test", "heihei") // 如果没有 新增一个  如果有 修改
