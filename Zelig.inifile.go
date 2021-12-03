@@ -249,7 +249,7 @@ func NewZeligIniFromMemory(Bytes []byte) (TZeligIni, error) {
 	}, err
 }
 
-func NewZeligFromFile(FileName string) (TZeligIni, error) {
+func NewZeligIniFromFile(FileName string) (TZeligIni, error) {
 	Bytes, err := os.ReadFile(FileName)
 	if err != nil {
 		Bytes = []byte(`[general]`)
