@@ -5,33 +5,53 @@
 #### Web http://zelig.cn
 ```golang
 
-	type TTestData struct {
-		StringVal string  `ini:"string_value"`
-		IntVal    int64   `ini:"integer_value"`
-		FloatVal  float64 `ini:"Float_value"`
+package main
+
+import (
+	"fmt"
+	z "github.com/Icy2010/ZeligIniFile"
+)
+
+type TContacInfo struct {
+	Name   string `ini:"name"`
+	Web    string `ini:"web"`
+	EMail  string `ini:"email"`
+	WeChat string `ini:"wechat"`
+	QQ     string `ini:"qq"`
+}
+
+func main() {
+	zini, err := z.NewZeligIniFromMemory([]byte(`[options]`))
+	if err == nil {
+		Sec := zini.Section(`options`)
+		Sec.SetString(`web`, `https://zelig.cn`)
+		Sec.SetString(`name`, `icy`)
+		Sec.SetString(`email`, `icy2010@hotmail.com`)
+		Sec.SetString(`wechat`, `IcySoft`)
+		Sec.SetString(`qq`, `2261206`)
+
+		Val := Sec.String(`name`)
+		fmt.Println(Val)
+
+		Val = Sec.String(`nick`, `meow`)
+		fmt.Println(Val)
+
+		Val, err = zini.FindString(`options.web`)
+		fmt.Printf("Web: %s\n", Val)
+
+		Info := TContacInfo{}
+		if Sec.Struct(&Info) == nil {
+			fmt.Println(Info)
+		}
+
+		err = zini.SaveTo(`config.ini`)
+		if err != nil {
+			fmt.Println(err)
+		}
+	} else {
+		fmt.Println(err)
 	}
+}
 
-	zini, err := NewZeligIniFromFile("config.cfg") //如果没有这个文件不存在的 或者错误的 默认会生成一个 [general]的段
-	t.Error(err)
-	sec := zini.Section(`general`)
-	sec.SetString("test", "heihei") // 如果没有 新增一个  如果有 修改
-	sec.SetFloat(`fee`, 100.12)
-	t.Error(zini.Save()) // 保存到 创建时候输入的 如果不需要  SaveTo(`config.cfg`)
-
-	t.Log(zini.FindString(`general.test`))
-	t.Log(sec.Int(`heihei`, 100))
-	t.Log(zini.FindFloat(`general.fee`))
-
-	t.Log(sec.ToJson())
-	t.Error(sec.SetStruct(TTestData{
-		StringVal: "test",
-		IntVal:    1000,
-		FloatVal:  10.10,
-	}))
-
-	data := TTestData{}
-	t.Error(sec.Struct(&data))
-	t.Log(data)
-	t.Error(zini.Save())
   
 ```
