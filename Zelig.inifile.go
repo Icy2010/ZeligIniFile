@@ -329,6 +329,8 @@ func (this *TZeligIni) ReadFromBytes(data []byte) int {
 				HasComment = false
 			}
 			break
+		case 13:
+			break
 		default:
 			if HasSection && !HasComment {
 				Buildr.WriteByte(c)
