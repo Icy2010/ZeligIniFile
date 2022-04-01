@@ -11,26 +11,36 @@ type TTestData struct {
 }
 
 func TestTZeligIni(t *testing.T) {
-	zini, err := NewZeligIniFromFile("config.cfg") //如果没有这个文件不存在的 或者错误的 默认会生成一个 [general]的段
-	t.Error(err)
-	sec := zini.Section(`general`)
-	sec.SetString("test", "heihei") // 如果没有 新增一个  如果有 修改
-	sec.SetFloat(`fee`, 100.12)
-	t.Error(zini.Save()) // 保存到 创建时候输入的 如果不需要  SaveTo(`config.cfg`)
+	ini := TZeligIni{}
+	ini.ReadFromString(`[test]
+string_value = 哈哈 ; 测试1
+integer_value = 1 ;测试2 
+Float_value = 2.2
 
-	t.Log(zini.FindString(`general.test`))
-	t.Log(sec.Int(`heihei`, 100))
-	t.Log(zini.FindFloat(`general.fee`))
+[defalut]
 
-	t.Log(sec.ToJson())
-	t.Error(sec.SetStruct(TTestData{
-		StringVal: "test",
-		IntVal:    1000,
-		FloatVal:  10.10,
-	}))
+hwqqwdqwd = 123
+saddas = 123123 ; 嘿嘿`)
 
 	data := TTestData{}
-	t.Error(sec.Struct(&data))
+	ini.Struct(`test`, &data)
 	t.Log(data)
-	t.Error(zini.Save())
+
+	ini.SaveToFile(`test.ini`)
+
+	ini.ClearSection()
+	sec := ini.AddSection("options")
+	sec.SetInt("integer_value", 20220401)
+	sec.SetString("string_value", "这是一个测试咯")
+	sec.SetComment("string_value", "看看咯")
+	sec.SetFloat("Float_value", 102.23)
+
+	ini.Struct(`options`, &data)
+	t.Log(data)
+
+	t.Log(sec.String("string_value", ""))
+
+	initext := ""
+	ini.SaveToString(&initext)
+	t.Log("\n" + initext)
 }

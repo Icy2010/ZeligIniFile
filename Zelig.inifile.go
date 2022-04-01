@@ -8,118 +8,151 @@ package Zelig_IniFile
 import (
 	"encoding/json"
 	"fmt"
-	"gopkg.in/ini.v1"
 	"os"
 	"reflect"
 	"strconv"
 	"strings"
 )
 
+type TIniValue struct {
+	Value   string
+	Comment string
+}
+
 type TIniSection struct {
-	section *ini.Section
+	items map[string]TIniValue
+	Name  string
 }
 
-func (this *TIniSection) ToJson() string {
-	keys := this.section.Keys()
-	if len(keys) > 0 {
-		data := make(map[string]string, 0)
-		for _, p := range keys {
-			data[p.Name()] = p.Value()
-		}
-
-		if bytes, err := json.Marshal(data); err == nil {
-			return string(bytes)
-		}
+func NewIniSection() TIniSection {
+	return TIniSection{
+		items: make(map[string]TIniValue),
+		Name:  "",
 	}
-
-	return `{}`
 }
 
-func (this *TIniSection) Int(key string, defval ...int64) int64 {
-	if value_int, err := this.section.Key(key).Int64(); err == nil {
-		return value_int
-	}
-
-	if len(defval) > 0 {
-		return defval[0]
-	}
-
-	return 0
+func (this *TIniSection) Clear() {
+	this.Name = ""
+	this.items = make(map[string]TIniValue, 0)
 }
 
-func (this *TIniSection) Float(key string, defflo ...float64) float64 {
-	if value_float, err := this.section.Key(key).Float64(); err == nil {
-		return value_float
-	}
-
-	if len(defflo) > 0 {
-		return defflo[0]
-	}
-
-	return 0
-}
-
-func (this *TIniSection) String(key string, defstr ...string) string {
-	s := this.section.Key(key).String()
-	if len(defstr) > 0 && s == "" {
-		return defstr[0]
-	}
-
-	return s
-}
-
-func (this *TIniSection) Bool(key string, defbool ...bool) bool {
-	if b, err := strconv.ParseBool(this.section.Key(key).String()); err == nil {
-		return b
-	}
-
-	if len(defbool) > 0 {
-		return defbool[0]
+func (this *TIniSection) HasIdent(Ident string) bool {
+	if _, ok := this.items[Ident]; ok {
+		return ok
 	}
 
 	return false
 }
 
-func (this *TIniSection) setValue(key string, value interface{}) {
-	if !this.section.HasKey(key) {
-		if _, err := this.section.NewKey(key, ""); err != nil {
-			return
+func (this *TIniSection) ToJson() string {
+	if len(this.items) > 0 {
+		data := make(map[string]string)
+		for k, v := range this.items {
+			data[k] = v.Value
+		}
+		if buff, err := json.Marshal(data); err == nil {
+			return string(buff)
+		}
+	}
+	return "{}"
+}
+
+func (this *TIniSection) Int(Ident string, defval int64) int64 {
+	if this.HasIdent(Ident) {
+		if v, err := strconv.ParseInt(this.items[Ident].Value, 10, 64); err == nil {
+			return v
 		}
 	}
 
+	return defval
+}
+
+func (this *TIniSection) Float(Ident string, defflo float64) float64 {
+	if this.HasIdent(Ident) {
+		if v, err := strconv.ParseFloat(this.items[Ident].Value, 64); err == nil {
+			return v
+		}
+	}
+
+	return defflo
+}
+
+func (this *TIniSection) String(Ident string, defstr string) string {
+	if this.HasIdent(Ident) {
+		return this.items[Ident].Value
+	}
+	return defstr
+}
+
+func (this *TIniSection) Bool(Ident string, defbool bool) bool {
+	if this.HasIdent(Ident) {
+		if v, err := strconv.ParseBool(this.items[Ident].Value); err == nil {
+			return v
+		}
+	}
+	return defbool
+}
+
+func (this *TIniSection) Add(Ident string, data TIniValue) {
+	this.items[Ident] = data
+}
+
+func (this *TIniSection) setValue(Ident string, value interface{}) {
+	data := TIniValue{
+		Value:   "",
+		Comment: "",
+	}
 	switch reflect.ValueOf(value).Kind() {
-	case reflect.Int64, reflect.Bool:
-		this.section.Key(key).SetValue(strconv.FormatInt(value.(int64), 10))
+	case reflect.Int64, reflect.Int, reflect.Bool:
+		data.Value = strconv.FormatInt(value.(int64), 10)
 	case reflect.Float64:
-		this.section.Key(key).SetValue(strconv.FormatFloat(value.(float64), 'f', 2, 64))
+		data.Value = strconv.FormatFloat(value.(float64), 'f', 2, 64)
 	case reflect.String:
-		this.section.Key(key).SetValue(value.(string))
+		data.Value = value.(string)
 	}
 
+	this.items[Ident] = data
 }
 
-func (this *TIniSection) SetInt(key string, Value int64) {
-	this.setValue(key, Value)
+func (this *TIniSection) SetInt(Ident string, Value int64) {
+	this.setValue(Ident, Value)
 }
 
-func (this *TIniSection) SetString(key, Value string) {
-	this.setValue(key, Value)
+func (this *TIniSection) SetString(Ident, Value string) {
+	this.setValue(Ident, Value)
 }
 
-func (this *TIniSection) SetFloat(key string, Value float64) {
-	this.setValue(key, Value)
+func (this *TIniSection) SetFloat(Ident string, Value float64) {
+	this.setValue(Ident, Value)
 }
 
-func (this *TIniSection) SetBool(key string, Value bool) {
+func (this *TIniSection) SetBool(Ident string, Value bool) {
 	if Value {
-		this.setValue(key, int64(1))
+		this.setValue(Ident, int64(1))
 	} else {
-		this.setValue(key, int64(0))
+		this.setValue(Ident, int64(0))
 	}
 }
 
-func (this *TIniSection) DeleteKey(key string) {
-	this.section.DeleteKey(key)
+func (this *TIniSection) DeleteKey(Ident string) {
+	if this.HasIdent(Ident) {
+		delete(this.items, Ident)
+	}
+}
+
+func (this *TIniSection) Comment(Ident string) string {
+	if this.HasIdent(Ident) {
+		return this.items[Ident].Comment
+	}
+	return ""
+}
+
+func (this *TIniSection) SetComment(Ident, Comment string) {
+	if this.HasIdent(Ident) {
+		P := this.items[Ident]
+		P.Comment = Comment
+		this.items[Ident] = P
+	}
 }
 
 func (this *TIniSection) SetStruct(value interface{}) error {
@@ -176,57 +209,37 @@ func (this *TIniSection) Struct(value interface{}) error {
 		if size == 0 {
 			return fmt.Errorf(`这是一个空的结构体`)
 		}
-		keys := this.section.Keys()
-		if len(keys) > 0 {
-			doSet := func(p *ini.Key) {
+		if len(this.items) > 0 {
+			doSet := func(field string, p TIniValue) {
 				for i := 0; i < size; i++ {
 					t := vtype.Field(i)
 					s := t.Tag.Get(`ini`)
 					next := false
 					if len(s) > 0 {
-						next = strings.EqualFold(s, p.Name())
+						next = strings.EqualFold(s, field)
 					} else {
-						next = strings.EqualFold(t.Name, p.Name())
+						next = strings.EqualFold(t.Name, field)
 					}
-
 					if next {
 						v := val.Field(i)
 						switch v.Kind() {
 						case reflect.Bool:
-							v.SetBool(func() bool {
-								if i, err := p.Int(); err == nil {
-									return i > 0
-								} else {
-									return false
-								}
-							}())
+							v.SetBool(this.Bool(field, false))
 						case reflect.String:
-							v.SetString(p.String())
+							v.SetString(this.String(field, ""))
 						case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64:
-							{
-								if i64, err := p.Int64(); err == nil {
-									v.SetInt(i64)
-								}
-							}
+							v.SetInt(this.Int(field, 0))
 						case reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-							{
-								if ui64, err := p.Uint64(); err == nil {
-									v.SetUint(ui64)
-								}
-							}
+							v.SetUint(uint64(this.Int(field, 0)))
 						case reflect.Float32, reflect.Float64:
-							{
-								if f64, err := p.Float64(); err == nil {
-									v.SetFloat(f64)
-								}
-							}
+							v.SetFloat(this.Float(field, 0))
 						}
 					}
 				}
 			}
 
-			for _, p := range keys {
-				doSet(p)
+			for k, v := range this.items {
+				doSet(k, v)
 			}
 		} else {
 			return fmt.Errorf(`段内是控的.`)
@@ -236,146 +249,202 @@ func (this *TIniSection) Struct(value interface{}) error {
 	return nil
 }
 
+func (this *TIniSection) IdentNames() []string {
+	names := make([]string, 0)
+	if len(this.items) > 0 {
+		for k, _ := range this.items {
+			names = append(names, k)
+		}
+	}
+	return names
+}
+
+func (this *TIniSection) Values() []string {
+	values := make([]string, 0)
+	if len(this.items) > 0 {
+		for _, v := range this.items {
+			values = append(values, v.Value)
+		}
+	}
+
+	return values
+}
+
 type TZeligIni struct {
-	ini      *ini.File
-	FileName string
+	Sections []TIniSection
 }
 
-func NewZeligIniFromMemory(Bytes []byte) (TZeligIni, error) {
-	i, err := ini.Load(Bytes)
-	return TZeligIni{
-		ini:      i,
-		FileName: "",
-	}, err
-}
+func (this *TZeligIni) ReadFromBytes(data []byte) int {
+	Buildr := strings.Builder{}
+	Comment := strings.Builder{}
+	var HasSection, HasComment bool
+	BeginIndex := 0
+	Section := NewIniSection()
 
-func NewZeligIniFromFile(FileName string) (TZeligIni, error) {
-	Bytes, err := os.ReadFile(FileName)
-	if err != nil {
-		Bytes = []byte(`[general]`)
-	}
-
-	zini, e := NewZeligIniFromMemory(Bytes)
-	zini.FileName = FileName
-
-	return zini, e
-}
-
-func (this *TZeligIni) Section(Name string) TIniSection {
-	Sec, err := this.ini.GetSection(Name)
-	if err != nil {
-		Sec = this.ini.Section(Name)
-	}
-	return TIniSection{section: Sec}
-}
-
-func (this *TZeligIni) KeyStrings(section string) []string {
-	return this.ini.Section(section).KeyStrings()
-}
-
-func (this *TZeligIni) HasKey(section, key string) bool {
-	if Sec, err := this.ini.GetSection(section); err == nil {
-		return Sec.HasKey(key)
-	}
-
-	return false
-}
-
-func (this *TZeligIni) HasValue(section, value string) bool {
-	if Sec, err := this.ini.GetSection(section); err == nil {
-		return Sec.HasValue(value)
-	}
-	return false
-}
-
-func (this *TZeligIni) HasSection(name string) bool {
-	return this.ini.HasSection(name)
-}
-
-func (this *TZeligIni) DeleteSection(name string) {
-	this.ini.DeleteSection(name)
-}
-
-func (this *TZeligIni) DeleteKey(section, key string) {
-	if Sec, err := this.ini.GetSection(section); err == nil {
-		Sec.DeleteKey(key)
-	}
-}
-
-func (this *TZeligIni) SectionStrings() []string {
-	return this.ini.SectionStrings()
-}
-
-func (this *TZeligIni) Sections() []TIniSection {
-	list := make([]TIniSection, 0)
-	Names := this.SectionStrings()
-	if len(Names) > 0 {
-		for _, v := range Names {
-			list = append(list, this.Section(v))
-		}
-	}
-	return list
-}
-
-func (this *TZeligIni) getSectionKey(path string) (*ini.Key, error) {
-	items := strings.Split(path, `.`)
-	if len(items) != 2 {
-		return nil, fmt.Errorf(`段键不正确`)
-	}
-
-	if Sec, err := this.ini.GetSection(items[0]); err == nil {
-		if !Sec.HasKey(items[1]) {
-			return nil, fmt.Errorf(`键不正确`)
+	doAdd := func() {
+		item := strings.Split(Buildr.String(), "=")
+		if len(item) == 2 {
+			Section.Add(strings.Trim(item[0], " "), TIniValue{
+				Value:   strings.Trim(item[1], " "),
+				Comment: Comment.String(),
+			})
 		}
 
-		return Sec.Key(items[1]), nil
+		Buildr = strings.Builder{}
+		Comment = strings.Builder{}
+	}
+
+	doAddSection := func() {
+		if HasSection {
+			doAdd()
+			this.Sections = append(this.Sections, Section)
+			Section.Clear()
+		}
+
+	}
+
+	for i, c := range data {
+		switch c {
+		case 91:
+			{
+				doAddSection()
+				BeginIndex = i
+			}
+			break
+		case 93:
+			{
+				HasSection = true
+				HasComment = false
+				Section.Name = string(data[BeginIndex+1 : i])
+			}
+			break
+		case 59:
+			HasComment = true
+			break
+
+		case 10:
+			{
+				doAdd()
+				Buildr = strings.Builder{}
+				HasComment = false
+			}
+			break
+		default:
+			if HasSection && !HasComment {
+				Buildr.WriteByte(c)
+			}
+
+			if HasComment {
+				Comment.WriteByte(c)
+			}
+			break
+		}
+	}
+
+	doAddSection()
+	return len(this.Sections)
+}
+
+func (this *TZeligIni) ReadFromString(value string) int {
+	return this.ReadFromBytes([]byte(value))
+}
+
+func (this *TZeligIni) ReadFromFile(fileName string) int {
+	if buff, err := os.ReadFile(fileName); err == nil {
+		return this.ReadFromBytes(buff)
+	}
+
+	return 0
+}
+
+func (this *TZeligIni) GetSection(name string) (*TIniSection, error) {
+	if len(this.Sections) > 0 {
+		for i, p := range this.Sections {
+			if strings.EqualFold(p.Name, name) {
+				return &this.Sections[i], nil
+			}
+		}
+	}
+
+	return nil, fmt.Errorf(`未找到段落`)
+}
+
+func (this *TZeligIni) Struct(name string, data interface{}) error {
+	if sec, err := this.GetSection(name); err == nil {
+		return sec.Struct(data)
 	} else {
-		return nil, fmt.Errorf(`段不正确`)
+		return err
 	}
 }
 
-func (this *TZeligIni) FindString(path string) (string, error) {
-	if key, err := this.getSectionKey(path); err == nil {
-		return key.String(), err
-	} else {
-		return "", err
+func (this *TZeligIni) SetStruct(name string, data interface{}) error {
+	Sec, err := this.GetSection(name)
+	if err == nil {
+		return Sec.SetStruct(data)
+	}
+
+	return err
+}
+
+func (this *TZeligIni) SaveToBytes(data *[]byte) {
+	var text string
+	this.SaveToString(&text)
+	*data = []byte(text)
+}
+
+func (this *TZeligIni) SaveToString(text *string) {
+	if len(this.Sections) > 0 {
+		Builder := strings.Builder{}
+		for _, sec := range this.Sections {
+			Builder.WriteString("[" + sec.Name + "]\n")
+			if len(sec.items) > 0 {
+				for k, v := range sec.items {
+					Builder.WriteString(k + " = " + v.Value)
+					if v.Comment != "" {
+						Builder.WriteString(" ; " + v.Comment)
+					}
+					Builder.WriteString("\n")
+				}
+			}
+		}
+
+		*text = Builder.String()
 	}
 }
 
-func (this *TZeligIni) FindInt(path string) (int64, error) {
-	if key, err := this.getSectionKey(path); err == nil {
-		var i int64 = 0
-		i, err = key.Int64()
-		return i, err
+func (this *TZeligIni) SaveToFile(fileName string) {
+	if f, err := os.Create(fileName); err == nil {
+		defer f.Close()
+
+		var text string
+		this.SaveToString(&text)
+		f.WriteString(text)
 	} else {
-		return 0, err
+		fmt.Println(err)
 	}
 }
 
-func (this *TZeligIni) FindFloat(path string) (float64, error) {
-	if key, err := this.getSectionKey(path); err == nil {
-		var f float64 = 0
-		f, err = key.Float64()
-		return f, err
-	} else {
-		return 0, err
+func (this *TZeligIni) DeleteSection(index int) {
+	this.Sections = append(this.Sections[:index], this.Sections[index+1:]...)
+}
+
+func (this *TZeligIni) ClearSection() {
+	this.Sections = make([]TIniSection, 0)
+}
+
+func (this *TZeligIni) SectionNames() []string {
+	names := make([]string, 0)
+	if len(this.Sections) > 0 {
+		for _, p := range this.Sections {
+			names = append(names, p.Name)
+		}
 	}
+	return names
 }
 
-func (this *TZeligIni) FindBool(path string) (bool, error) {
-	if key, err := this.getSectionKey(path); err == nil {
-		var b bool = false
-		b, err = key.Bool()
-		return b, err
-	} else {
-		return false, err
-	}
-}
-
-func (this *TZeligIni) SaveTo(filename string) error {
-	return this.ini.SaveTo(filename)
-}
-
-func (this *TZeligIni) Save() error {
-	return this.ini.SaveTo(this.FileName)
+func (this *TZeligIni) AddSection(name string) *TIniSection {
+	this.Sections = append(this.Sections, NewIniSection())
+	sec := &this.Sections[len(this.Sections)-1]
+	sec.Name = name
+	return sec
 }
