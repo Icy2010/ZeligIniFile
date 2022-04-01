@@ -21,36 +21,42 @@ type TContacInfo struct {
 }
 
 func main() {
-	zini, err := z.NewZeligIniFromMemory([]byte(`[options]`))
-	if err == nil {
-		Sec := zini.Section(`options`)
-		Sec.SetString(`web`, `https://zelig.cn`)
-		Sec.SetString(`name`, `icy`)
-		Sec.SetString(`email`, `icy2010@hotmail.com`)
-		Sec.SetString(`wechat`, `IcySoft`)
-		Sec.SetString(`qq`, `2261206`)
+	ini := z.TZeligIni{}
+	ini.ReadFromString(`[default]
+string_value = 哈哈 ; 测试1
+integer_value = 1 ;测试2 
+Float_value = 2.2
 
-		Val := Sec.String(`name`)
-		fmt.Println(Val)
+[options]
+web=https://zelig.cn
+name=icy
+email=icy2010@hotmail.com
+wechat=IcySoft
+qq = 2261206
+`)
+  
+   ini.GetSection("default").String("string_value","")	
 
-		Val = Sec.String(`nick`, `meow`)
-		fmt.Println(Val)
+	data := TContacInfo{}
+	ini.Struct("options", &data)
+	fmt.Println(data)
 
-		Val, err = zini.FindString(`options.web`)
-		fmt.Printf("Web: %s\n", Val)
+	ini.SaveToFile(`test.ini`)
 
-		Info := TContacInfo{}
-		if Sec.Struct(&Info) == nil {
-			fmt.Println(Info)
-		}
+	ini.ClearSection()
+	Sec := ini.AddSection("options")
+	Sec.SetString(`web`, `https://zelig.cn`)
+	Sec.SetString(`name`, `icy`)
+	Sec.SetString(`email`, `icy2010@hotmail.com`)
+	Sec.SetString(`wechat`, `IcySoft`)
+	Sec.SetString(`qq`, `2261206`)
+	
+	fmt.Println(Sec.String("web", ""))
 
-		err = zini.SaveTo(`config.ini`)
-		if err != nil {
-			fmt.Println(err)
-		}
-	} else {
-		fmt.Println(err)
-	}
+	initext := ""
+	ini.SaveToString(&initext)
+	fmt.Println("\n" + initext)
+	
 }
 
   
