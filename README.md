@@ -35,7 +35,7 @@ wechat=IcySoft
 qq = 2261206
 `)
   
-   ini.GetSection("default").String("string_value","")	
+   fmt.Println(ini.GetSection("default"))
 
 	data := TContacInfo{}
 	ini.Struct("options", &data)
